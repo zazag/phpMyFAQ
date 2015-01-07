@@ -2419,7 +2419,8 @@ class PMF_Faq
         $sqlWherefilter = '';
 
         if (!isset($oCat)) {
-            $oCat  = new PMF_Category($this->_config);
+			// Get current user and group id - default: -1
+            $oCat  = new PMF_Category($this->_config, $this->groups);
         }
         $aChildren = array_values($oCat->getChildren($nCatid));
 

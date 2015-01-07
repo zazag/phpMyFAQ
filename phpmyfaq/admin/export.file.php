@@ -37,19 +37,37 @@ if (!defined('IS_VALID_PHPMYFAQ')) {
 //       [&catid=NN[&downwards=1]], default: all, downwards
 //
 
+	// Get current user and group id - default: -1
+	if (!is_null($user) && $user instanceof PMF_User_CurrentUser) {
+		$current_user   = $user->getUserId();
+		if ($user->perm instanceof PMF_Perm_Medium) {
+			$current_groups = $user->perm->getUserGroups($current_user);
+		} else {
+			$current_groups = array(-1);
+		}
+		if (0 == count($current_groups)) {
+			$current_groups = array(-1);
+		}
+	} else {
+		$current_user   = -1;
+		$current_groups = array(-1);
+	}
+
 $categoryId        = PMF_Filter::filterInput(INPUT_POST, 'catid', FILTER_VALIDATE_INT);
 $downwards         = PMF_Filter::filterInput(INPUT_POST, 'downwards', FILTER_VALIDATE_BOOLEAN, false);
 $inlineDisposition = PMF_Filter::filterInput(INPUT_POST, 'dispos', FILTER_SANITIZE_STRING);
 $type              = PMF_Filter::filterInput(INPUT_POST, 'type', FILTER_SANITIZE_STRING, 'none');
 
 $faq      = new PMF_Faq($faqConfig);
-$category = new PMF_Category($faqConfig);
+	$faq->setUser($current_user);
+	$faq->setGroups($current_groups);
+    $category = new PMF_Category($faqConfig, $current_groups);
 $category->buildTree();
 
 $tags = new PMF_Tags($faqConfig);
 
 $export  = PMF_Export::create($faq, $category, $faqConfig, $type);
-$content = $export->generate($categoryId, $downwards);
+$content = $export->generate($categoryId, $downwards, $LANGCODE);
 
 // Stream the file content
 $oHttpStreamer = new PMF_HttpStreamer(Response::create(), $type, $content);

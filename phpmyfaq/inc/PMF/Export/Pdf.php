@@ -2,7 +2,7 @@
 /**
  * PDF Export class for phpMyFAQ
  *
- * PHP Version 5.4
+ * PHP Version 5.3
  *
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
@@ -94,7 +94,6 @@ class PMF_Export_Pdf extends PMF_Export
         // Initialize categories
         $this->category->transform($categoryId);
 
-        $this->pdf->setCategory($categoryId);
         $this->pdf->setCategories($this->category->categoryName);
         $this->pdf->SetCreator(
             $this->_config->get('main.titleFAQ') .
@@ -103,12 +102,39 @@ class PMF_Export_Pdf extends PMF_Export
         );
 
         $faqdata    = $this->faq->get(FAQ_QUERY_TYPE_EXPORT_XML, $categoryId, $downwards, $language);
+
         $categories = $this->category->catTree;
 
         $categoryGroup = 0;
-        $this->pdf->AddPage();
+		$downwardsflag = false;
+		$_categoryId = $categoryId;
         foreach ($categories as $category) {
-            
+            if (0 == $categoryId && $downwards) {
+				if (0 == $category['indent']) {
+					$_categoryId = $category['id'];
+				}
+			}
+				
+            if ($category['id'] != $_categoryId) {				
+				if ($downwardsflag) {
+					if ($current_indent >= $category['indent']) {
+						$downwardsflag = false;
+						continue;
+					}
+				}else {
+					continue;
+				}
+			}
+			else {
+				if ($downwards) {
+					$downwardsflag = true;
+					$current_indent = $category['indent'];
+				}
+			};
+			
+			$this->pdf->setCategory($category['id']);
+			$this->pdf->AddPage();
+			
             if ($category['id'] !== $categoryGroup) {
                 $this->pdf->Bookmark(
                     html_entity_decode(
@@ -122,8 +148,6 @@ class PMF_Export_Pdf extends PMF_Export
             
             foreach ($faqdata as $faq) {
                 if ($faq['category_id'] === $category['id']) {
-
-                    $this->pdf->AddPage();
                     $this->pdf->setCategory($category['id']);
                     $this->pdf->Bookmark(
                         html_entity_decode(
@@ -159,6 +183,7 @@ class PMF_Export_Pdf extends PMF_Export
                         5,
                         $PMF_LANG['msgLastUpdateArticle'] . PMF_Date::createIsoDate($faq['lastmodified'])
                     );
+                    $this->pdf->Ln(20);
                 }
             }
         }
